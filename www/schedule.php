@@ -51,6 +51,7 @@
    define('SCHEDULE_PURGESPACEMODE', 'PurgeSpace_ModeEx');
    define('SCHEDULE_PURGESPACELEVEL', 'PurgeSpace_Level');
    define('SCHEDULE_AUTOCAPTUREINTERVAL', 'AutoCapture_Interval');
+   define('SCHEDULE_AUTOCAMERAINTERVAL', 'AutoCamera_Interval');
    define('SCHEDULE_COMMANDSON', 'Commands_On');
    define('SCHEDULE_COMMANDSOFF', 'Commands_Off');
    define('SCHEDULE_MODES', 'Modes');
@@ -121,16 +122,17 @@
        } 
        return false;
    }
-   
+
    function getSchedulePID() {
       $pids = array();
-      exec("pgrep -f -l schedule.php", $pids);
+      exec("ps -ef", $pids);
       $pidId = 0;
-      foreach($pids as $pid) {
-         if (strpos($pid, 'php ') !== false) {
-            $pidId = strpos($pid, ' ');
-            $pidId = substr($pid, 0, $pidId);
-            break;
+      foreach ($pids as $pid) {
+         if (strpos($pid, 'schedule.php') !== false) {
+            $fields = preg_split('#\s+#', $pid, null, PREG_SPLIT_NO_EMPTY);
+            if (is_numeric($fields[1])) {
+               $pidId = $fields[1];
+            }
          }
       }
       return $pidId;
@@ -191,6 +193,7 @@
          SCHEDULE_MAXCAPTURE => '0',
          SCHEDULE_DAYMODE => '1',
          SCHEDULE_AUTOCAPTUREINTERVAL => '0',
+         SCHEDULE_AUTOCAMERAINTERVAL => '0',
          SCHEDULE_TIMES => array("09:00","10:00","11:00","12:00","13:00","14:00"),
          SCHEDULE_COMMANDSON => array("ca 1","","","ca 1","","","","","","",""),
          SCHEDULE_COMMANDSOFF => array("ca 0","","","ca 0","","","","","","",""),
@@ -406,6 +409,7 @@ function cmdHelp() {
              echo "<tr><td>sc</td><td>1</td><td>Rescan for video and image indexes</td></tr>";
              echo "<tr><td>sy</td><td>macro</td><td>Execute macro</td></tr>";
              echo "<tr><td>cn</td><td>1/2</td><td>Select camera (Compute model only)</td></tr>";
+             echo "<tr><td>st</td><td>0/1</td><td>Camera statistics</td></tr>";
            echo "</table>";
          echo "</div>";
        echo "</div>";
@@ -634,16 +638,16 @@ function cmdHelp() {
       writeLog("RaspiCam support started");
       $captureStart = 0;
       $pipeIn = openPipe($schedulePars[SCHEDULE_FIFOIN]);
-      $lastDayPeriod = -1;
-      $cmdPeriod = -1;
       $lastOnCommand = -1;
       $timeout = 0;
       $timeoutMax = 0; //Loop test will terminate after this (seconds) (used in test), set to 0 forever
       while($timeoutMax == 0 || $timeout < $timeoutMax) {
          writeLog("Scheduler loop is started");
+         $lastDayPeriod = -1;
          $pollTime = $schedulePars[SCHEDULE_CMDPOLL];
          $slowPoll = 0;
          $managechecktime = time();
+         $autocameratime =$managechecktime;
          $modechecktime = $managechecktime;
          if ($schedulePars[SCHEDULE_AUTOCAPTUREINTERVAL] > $schedulePars[SCHEDULE_MAXCAPTURE] ) {
             $autocapturetime = $managechecktime;
@@ -652,7 +656,7 @@ function cmdHelp() {
             $autocapturetime = 0;
             $autocapture = 0;
          }
-
+         $lastStatusTime = filemtime(BASE_DIR . "/status_mjpeg.txt");
          while($timeoutMax == 0 || $timeout < $timeoutMax) {
             usleep($pollTime * 1000000);
             //Check for incoming motion capture requests
@@ -743,6 +747,28 @@ function cmdHelp() {
                   $autocapturetime = $timenow + $schedulePars[SCHEDULE_AUTOCAPTUREINTERVAL];
                   writeLog("Autocapture request.");
                   $autocapture = 1;
+               }
+               //Check for auto camera on/off based on status update timing (active browser)
+               if (($schedulePars[SCHEDULE_AUTOCAMERAINTERVAL] > 0) && $timenow > $autocameratime) {
+                  // 2 seconds between tests to allow time for commands to take effect
+                  $autocameratime = $timenow + 2;
+                  clearstatcache();
+                  $modTime = filemtime(BASE_DIR . "/status_mjpeg.txt");
+                  if (file_get_contents(BASE_DIR . "/status_mjpeg.txt") == 'halted') {
+                     if ($modTime > $lastStatusTime) {
+                        writeLog("autocamera startup");
+                        sendCmds('ru 1');
+                     }
+                  } else {
+                     if (($timenow - $modTime) > $schedulePars[SCHEDULE_AUTOCAMERAINTERVAL]) {
+                        writeLog("autocamera shutdown");
+                        sendCmds('md 0;ru 0');
+                        //allow a bit of time to ensure it doesn't switch straight back on
+                        $lastStatusTime = $timenow + 5;
+                     } else {
+                        $lastStatusTime = $timenow;
+                     }
+                  }
                }
             }
          }
