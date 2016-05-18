@@ -3,7 +3,7 @@
    define('LBASE_DIR',dirname(__FILE__));
    //Global defines and utility functions
    // version string
-   define('APP_VERSION', 'v6.1.6');
+   define('APP_VERSION', 'v6.0.19');
 
    // name of this application
    define('APP_NAME', 'RPi Cam Control');
@@ -89,7 +89,7 @@
       foreach($config as $key => $value) {
          $cstring .= $key . ' ' . $value . "\n";
       }
-      if ($cstring != "") {
+      if (cstring != "") {
          $fp = fopen(LBASE_DIR . '/' . CONFIG_FILE2, 'w');
          fwrite($fp, "#User config file\n");
          fwrite($fp, $cstring);
@@ -127,7 +127,7 @@
       $lapsefiles = array();
       foreach($scanfiles as $file) {
          if (strpos($file, $batch) !== false) {
-            if (!isThumbnail($file) && strcasecmp(fileext($file), "jpg") == 0) {
+            if (!isThumbnail($file)) {
                $fDate = filemtime("$path/$file");
                if ($fDate >= $start) {
                   $files[$file] = $fDate;
@@ -201,10 +201,6 @@
 
    function dataFileext($file) {
       $f = dataFileName($file);
-      return fileext($f); 
-   }
-   
-   function fileext($f) {
       if ($f <> "") {
          $i = strrpos($f, '.');
          if ($i !== false)

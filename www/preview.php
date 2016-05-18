@@ -11,23 +11,19 @@
    define('BTN_SELECTALL', 'Select All');
    define('BTN_SELECTNONE', 'Select None');
    define('BTN_GETZIP', 'Get Zip');
-   define('BTN_UPDATESIZEORDER', 'Update');
+   define('BTN_UPDATESIZEORDER', 'Update Settings');
    define('TXT_PREVIEW', 'Preview');
    define('TXT_THUMB', 'Thumb');
    define('TXT_FILES', 'Files');
    
    define('CONVERT_CMD', 'convertCmd.txt');
    
-   //Set to top or bottom to position controls
-   define('CONTROLS_POS', 'top');
    
    //Set size defaults and try to get from cookies
    $previewSize = 640;
    $thumbSize = 96;
    $sortOrder = 1;
    $showTypes = 1;
-   $timeFilter = 1;
-   $timeFilterMax = 8;
    if(isset($_COOKIE["previewSize"])) {
       $previewSize = $_COOKIE["previewSize"];
    }
@@ -39,9 +35,6 @@
    }
    if(isset($_COOKIE["showTypes"])) {
       $showTypes = $_COOKIE["showTypes"];
-   }
-   if(isset($_COOKIE["timeFilter"])) {
-      $timeFilter = $_COOKIE["timeFilter"];
    }
    $dSelect = "";
    $pFile = "";
@@ -138,10 +131,6 @@
             if(!empty($_POST['showTypes'])) {
                $showTypes = $_POST['showTypes'];
                setcookie("showTypes", $showTypes, time() + (86400 * 365), "/");
-            }        
-            if(!empty($_POST['timeFilter'])) {
-               $timeFilter = $_POST['timeFilter'];
-               setcookie("timeFilter", $timeFilter, time() + (86400 * 365), "/");
             }        
             break;
          case 'zipSel':
@@ -255,17 +244,18 @@
       }
       $fDate = @date('Y-m-d', $fModTime);
       $fTime = @date('H:i:s', $fModTime);
-      $fWidth = max($ts + 4, 150);
+      $fWidth = max($ts + 4, 140);
       echo "<fieldset class='fileicon' style='width:" . $fWidth . "px;'>";
       echo "<legend class='fileicon'>";
-      echo "<button type='submit' name='delete1' value='$f' class='fileicondelete' style='background-image:url(delete.png);'></button>";
-      echo "&nbsp;&nbsp;<a target=\"_blank\" href=\"" . MEDIA_PATH . "/$rFile\">$fNumber</a>&nbsp;";
+      echo "<button type='submit' name='delete1' value='$f' class='fileicondelete' style='background-image:url(delete.png);
+'></button>";
+      echo "&nbsp;&nbsp;$fNumber&nbsp;";
       echo "<img src='$fIcon' style='width:24px'/>";
       echo "<input type='checkbox' name='check_list[]' $sel value='$f' style='float:right;'/>";
       echo "</legend>";
       if ($fsz > 0) echo "$fsz Kb $lapseCount $duration"; else echo 'Busy';
       echo "<br>$fDate<br>$fTime<br>";
-      if ($fsz > 0) echo "<a title='$rFile' href='#' onclick='load_preview(\"$f\");'>";
+      if ($fsz > 0) echo "<a title='$rFile' href='preview.php?preview=$f'>";
       echo "<img src='" . MEDIA_PATH . "/$f' style='width:" . $ts . "px'/>";
       if ($fsz > 0) echo "</a>";
       echo "</fieldset> ";
@@ -274,33 +264,19 @@
    function getThumbnails() {
       global $sortOrder;
       global $showTypes;
-      global $timeFilter, $timeFilterMax;
       $files = scandir(MEDIA_PATH, $sortOrder - 1);
       $thumbnails = array();
-      $nowTime = time();
       foreach($files as $file) {
          if($file != '.' && $file != '..' && isThumbnail($file)) {
-            if ($timeFilter == 1) {
-               $include = true;
-            } else {
-               $timeD = $nowTime - filemtime(MEDIA_PATH . "/$file");
-               if ($timeFilter == $timeFilterMax) {
-                  $include = ($timeD >= 86400 * ($timeFilter-1));
-               } else {
-                  $include = ($timeD >= (86400 * ($timeFilter - 2))) && ($timeD < (($timeFilter - 1) * 86400));
-               }
+            $fType = getFileType($file);
+            if($showTypes == '1') {
+               $thumbnails[] = $file;
             }
-            if($include) {
-               $fType = getFileType($file);
-               if($showTypes == '1') {
-                  $thumbnails[] = $file;
-               }
-               elseif($showTypes == '2' && ($fType == 'i' || $fType == 't')) {
-                  $thumbnails[] = $file;
-              }
-               elseif($showTypes == '3' && ($fType == 'v')) {
-                  $thumbnails[] = $file; 
-               }
+            elseif($showTypes == '2' && ($fType == 'i' || $fType == 't')) {
+               $thumbnails[] = $file;
+           }
+            elseif($showTypes == '3' && ($fType == 'v')) {
+               $thumbnails[] = $file; 
             }
          }
       }
@@ -324,43 +300,6 @@
       echo '</div>';
    }
    
-   function settingsControls() {
-      global $previewSize,$thumbSize,$sortOrder, $showTypes;
-      global $timeFilter, $timeFilterMax;
-      
-      echo TXT_PREVIEW . " <input type='text' size='4' name='previewSize' value='$previewSize'>";
-      echo "&nbsp;&nbsp;" . TXT_THUMB . " <input type='text' size='3' name='thumbSize' value='$thumbSize'>";
-      echo '&nbsp;Sort&nbsp;<select id="sortOrder" name="sortOrder">';
-      if ($sortOrder == 1) $selected = "selected"; else $selected = "";
-      echo "<option value='1' $selected>Ascending</option>";
-      if ($sortOrder == 2) $selected = "selected"; else $selected = "";
-      echo "<option value='2'  $selected>Descending</option>";
-      echo '</select>';
-      echo '&nbsp;Types&nbsp;<select id="showTypes" name="showTypes">';
-      if ($showTypes == 1) $selected = "selected"; else $selected = "";
-      echo "<option value='1' $selected>Images &amp Videos</option>";
-      if ($showTypes == 2) $selected = "selected"; else $selected = "";
-      echo "<option value='2'  $selected>Images only</option>";
-      if ($showTypes == 3) $selected = "selected"; else $selected = "";
-      echo "<option value='3'  $selected>Videos only</option>";
-      echo '</select>';
-      echo '&nbsp;Filter&nbsp;<select id="timeFilter" name="timeFilter">';
-      if ($timeFilter == 1) $selected = "selected"; else $selected = "";
-      echo "<option value='1' $selected>All</option>";
-      for($tf = 2; $tf < $timeFilterMax;$tf++) {
-         if ($timeFilter == $tf) $selected = "selected"; else $selected = "";
-         $tfStr = ($tf-2) * 24 . '-' . ($tf-1) * 24 . ' hours old';
-         echo "<option value='$tf'  $selected>$tfStr</option>";
-      }
-      if ($timeFilter >= $timeFilterMax) $selected = "selected"; else $selected = "";
-      $tfStr = $timeFilterMax * 24 . '+ hours old';
-      echo "<option value='$timeFilterMax'  $selected>$tfStr</option>";
-      echo '</select>';
-      echo "&nbsp;<button class='btn btn-primary' type='submit' name='action' value='updateSizeOrder'>" . BTN_UPDATESIZEORDER . "</button><br>";
-   }
-   
-   $convertCmd = file_get_contents(BASE_DIR . '/' . CONVERT_CMD);
-   $thumbnails = getThumbnails();
 ?>
 <!DOCTYPE html>
 <html>
@@ -372,15 +311,6 @@
       <link rel="stylesheet" href="<?php echo getStyle(); ?>" />
       <script src="js/style_minified.js"></script>
       <script src="js/script.js"></script>
-      <script src="js/preview.js"></script>
-      <script>
-         var thumbnails = <?php echo json_encode($thumbnails) ?>;
-         var linksBase = 'preview.php?preview=';
-         var mediaBase = "<?php echo MEDIA_PATH . '/' ?>";
-         var previewWidth = <?php echo $previewSize ?>;
-         var convertCmd = "<?php echo file_get_contents(BASE_DIR . '/' . CONVERT_CMD) ?>";
-      </script>
-
    </head>
    <body>
       <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -395,43 +325,44 @@
     
       <div class="container-fluid">
       <form action="preview.php" method="POST">
-         <div id='preview' style="display: none; min-height: <?php echo $previewSize ?>px">
-            <h1>
-               <?php echo TXT_PREVIEW ?>: <span id='media-title'></span>
-               <input type='button' value='&larr;' class='btn btn-primary' name='prev'>
-               <input type='button' value='&rarr;' class='btn btn-primary' name='next'>
-
-               <button class='btn btn-primary' type='submit' name='download1'><?php echo BTN_DOWNLOAD; ?></button>
-               <button class='btn btn-danger' type='submit' name='delete1'><?php echo BTN_DELETE; ?></button>
-               
-               <button class='btn btn-primary' type='submit' name='convert'><?php echo BTN_CONVERT ?></button>
-               <br>
-            </h1>
-
-            <div id="convert-details">
-               Convert using: <input type='text' size=72 name = 'convertCmd' id='convertCmd' value='<?php echo $convertCmd ?>'><br><br>
-            </div>
-
-            <div id='media'></div>
-         </div>
-
-         <script>
-            var thumbnail = getParameterByName('preview');
-            if (thumbnail) {
-               load_preview(thumbnail);
+      <?php
+         $thumbnails = getThumbnails();
+         if ($pFile != "") {
+            $pIndex = array_search($tFile, $thumbnails);
+            echo "<h1>" . TXT_PREVIEW . ":  " . getFileType($tFile) . getFileIndex($tFile);
+            if ($pIndex > 0)
+               $attr = 'onclick="location.href=\'preview.php?preview=' . $thumbnails[$pIndex-1] . '\'"';
+            else
+               $attr = 'disabled';
+            echo "&nbsp;&nbsp;<input type='button' value='&larr;' class='btn btn-primary' name='prev' $attr >";
+            if (($pIndex+1) < count($thumbnails))
+               $attr = 'onclick="location.href=\'preview.php?preview=' . $thumbnails[$pIndex+1] . '\'"';
+            else
+               $attr = 'disabled';
+            echo "&nbsp;&nbsp;<input type='button' value='&rarr;' class='btn btn-primary' name='next' $attr>";
+            echo "&nbsp;&nbsp;<button class='btn btn-primary' type='submit' name='download1' value='$tFile'>" . BTN_DOWNLOAD . "</button>";
+            echo "&nbsp;<button class='btn btn-danger' type='submit' name='delete1' value='$tFile'>" . BTN_DELETE . "</button>";
+            if(getFileType($tFile) == "t") {
+               $convertCmd = file_get_contents(BASE_DIR . '/' . CONVERT_CMD);
+               echo "&nbsp;<button class='btn btn-primary' type='submit' name='convert' value='$tFile'>" . BTN_CONVERT . "</button>";
+               echo "<br></h1>Convert using: <input type='text' size=72 name = 'convertCmd' id='convertCmd' value='$convertCmd'><br><br>";
+            } else {
+               echo "<br></h1>";
             }
-         </script>
-
-         <h1><?php echo TXT_FILES; ?>
-         <button class='btn btn-primary' type='submit' name='action' value='selectNone'><?php echo BTN_SELECTNONE; ?></button>
-         <button class='btn btn-primary' type='submit' name='action' value='selectAll'><?php echo BTN_SELECTALL; ?></button>
-         <button class='btn btn-primary' type='submit' name='action' value='zipSel'><?php echo BTN_GETZIP; ?></button>
-         <button class='btn btn-danger' type='submit' name='action' value='deleteSel' onclick="return confirm('Are you sure?');"><?php echo BTN_DELETESEL; ?></button>
-         <button class='btn btn-danger' type='submit' name='action' value='deleteAll' onclick="return confirm('Are you sure?');"><?php echo BTN_DELETEALL; ?></button>
-         </h1>
-         <?php
+            if(substr($pFile, -3) == "jpg") {
+               echo "<a href='" . MEDIA_PATH . "/$tFile' target='_blank'><img src='" . MEDIA_PATH . "/$pFile' width='" . $previewSize . "px'></a>";
+            } else {
+               echo "<video width='" . $previewSize . "px' controls><source src='" . MEDIA_PATH . "/$pFile' type='video/mp4'>Your browser does not support the video tag.</video>";
+            }
+         }
+         echo "<h1>" . TXT_FILES . "&nbsp;&nbsp;";
+         echo "&nbsp;&nbsp;<button class='btn btn-primary' type='submit' name='action' value='selectNone'>" . BTN_SELECTNONE . "</button>";
+         echo "&nbsp;&nbsp;<button class='btn btn-primary' type='submit' name='action' value='selectAll'>" . BTN_SELECTALL . "</button>";
+         echo "&nbsp;&nbsp;<button class='btn btn-primary' type='submit' name='action' value='zipSel'>" . BTN_GETZIP . "</button>";
+         echo "&nbsp;&nbsp;<button class='btn btn-danger' type='submit' name='action' value='deleteSel' onclick=\"return confirm('Are you sure?');\">" . BTN_DELETESEL . "</button>";
+         echo "&nbsp;&nbsp;<button class='btn btn-danger' type='submit' name='action' value='deleteAll' onclick=\"return confirm('Are you sure?');\">" . BTN_DELETEALL . "</button>";
+         echo "</h1>";
          diskUsage();
-         if(CONTROLS_POS == 'top') settingsControls();
          if ($debugString !="") echo "$debugString<br>";
          if(count($thumbnails) == 0) echo "<p>No videos/images saved</p>";
          else {
@@ -439,7 +370,23 @@
               drawFile($file, $thumbSize, $dSelect);
             }
          }
-         if(CONTROLS_POS == 'bottom') {echo "<br>";settingsControls();}
+         echo "<p><p>" . TXT_PREVIEW . " <input type='text' size='4' name='previewSize' value='$previewSize'>";
+         echo "&nbsp;&nbsp;" . TXT_THUMB . " <input type='text' size='3' name='thumbSize' value='$thumbSize'>";
+         echo "&nbsp;Sort Order&nbsp;<select id='sortOrder' name='sortOrder'>";
+         if ($sortOrder == 1) $selected = "selected"; else $selected = "";
+         echo "<option value='1' $selected>Ascending</option>";
+         if ($sortOrder == 2) $selected = "selected"; else $selected = "";
+         echo "<option value='2'  $selected>Descending</option>";
+         echo '</select>';
+         echo "&nbsp;File Types&nbsp;<select id='showTypes' name='showTypes'>";
+         if ($showTypes == 1) $selected = "selected"; else $selected = "";
+         echo "<option value='1' $selected>Images and Videos</option>";
+         if ($showTypes == 2) $selected = "selected"; else $selected = "";
+         echo "<option value='2'  $selected>Images only</option>";
+         if ($showTypes == 3) $selected = "selected"; else $selected = "";
+         echo "<option value='3'  $selected>Videos only</option>";
+         echo '</select>';
+         echo "&nbsp;&nbsp;<button class='btn btn-primary' type='submit' name='action' value='updateSizeOrder'>" . BTN_UPDATESIZEORDER . "</button>";
       ?>
       </form>
       
