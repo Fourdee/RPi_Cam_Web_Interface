@@ -101,7 +101,7 @@ motion_clip 0
 motion_image
 motion_startframes 3
 motion_stopframes 150
-motion_pipe /var/www/FIFO1
+motion_pipe /var/www/dietpicam/FIFO1
 motion_file 0
 
 #
@@ -112,15 +112,15 @@ motion_file 0
 # macros_path can be used to store macros executed by sy command
 # boxing_path if set is where h264 files will be temporarily stored when boxing used
 # image, video and lapse may be configured relative to media_path if first / left out
-base_path /var/www
+base_path /var/www/dietpicam
 preview_path /dev/shm/mjpeg/cam.jpg
-image_path /var/www/media/im_%i_%Y%M%D_%h%m%s.jpg
-lapse_path /var/www/media/tl_%i_%t_%Y%M%D_%h%m%s.jpg
-video_path /var/www/media/vi_%v_%Y%M%D_%h%m%s.mp4
+image_path /var/www/dietpicam/media/im_%i_%Y%M%D_%h%m%s.jpg
+lapse_path /var/www/dietpicam/media/tl_%i_%t_%Y%M%D_%h%m%s.jpg
+video_path /var/www/dietpicam/media/vi_%v_%Y%M%D_%h%m%s.mp4
 status_file /dev/shm/mjpeg/status_mjpeg.txt
-control_file /var/www/FIFO
-media_path /var/www/media
-macros_path /var/www/macros
+control_file /var/www/dietpicam/FIFO
+media_path /var/www/dietpicam/media
+macros_path /var/www/dietpicam/macros
 user_annotate /dev/shm/mjpeg/user_annotate.txt
 boxing_path
 subdir_char @
@@ -157,8 +157,8 @@ watchdog_errors 3
 # Set callback_timeout to 0 to disable it
 callback_timeout 30
 #optional user_config file to overwrite (persist) changes
-user_config /var/www/uconfig
+user_config /var/www/dietpicam/uconfig
 
 #logfile for raspimjpeg, default to merge with scheduler log
-log_file /var/www/scheduleLog.txt
+log_file /var/www/dietpicam/scheduleLog.txt
 log_size 5000
